@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fake News Detector | Machine Learning Project</title>
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Chart.js with local offline copy and CDN fallback -->
+  <script src="chart.min.js"></script>
+  <script>
+    if (typeof Chart === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+
+  <!-- 1. HEADER -->
+  <header class="app-header">
+    <div class="content-container header-inner">
+      <div class="header-brand">
+        <h1 class="header-title">FAKE NEWS DETECTOR</h1>
+        <p class="header-subtitle">Machine Learning Based News Classification</p>
+      </div>
+      <div class="header-status">
+        <div id="backend-status-card" class="status-indicator status-checking" title="Backend Server Connectivity">
+          <span class="status-dot"></span>
+          <span id="backend-status-text">Checking...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN PAGE CONTAINER -->
+  <main class="content-container page-content">
+
+    <!-- 2. HERO / INTRODUCTION -->
+    <section class="section-intro">
+      <h2 class="intro-heading">Fake News Detection System</h2>
+      <p class="intro-subheading">Multi-Modal News Veracity Analysis using NLP and Machine Learning.</p>
+      <p class="intro-description">
+        Analyze news authenticity across <strong>Direct Text</strong>, <strong>PDF &amp; Word Documents</strong>, or live <strong>Website Links</strong>.
+        The content is ingested into a unified 10-step NLP pipeline (stopword removal and WordNet lemmatization),
+        transformed using a 5,000-feature TF-IDF unigram/bigram representation, and classified via three trained models:
+        <strong>Logistic Regression</strong>, <strong>Support Vector Machine (SVM)</strong>, and <strong>Random Forest</strong>.
+      </p>
+    </section>
+
+    <!-- 3. MAIN PREDICTION CARD (Analyze News) -->
+    <section class="card prediction-card" id="analyze-section">
+      <div class="card-header-flex">
+        <div>
+          <h3 class="card-heading">Analyze News</h3>
+          <p class="card-caption">Choose an input method below to evaluate article truthfulness using trained ML models.</p>
+        </div>
+      </div>
+
+      <!-- Input Mode Switcher Tabs -->
+      <div class="input-mode-tabs" role="tablist" aria-label="Input Modality">
+        <button type="button" class="tab-btn active" id="tab-text" data-mode="text" role="tab" aria-selected="true" aria-controls="pane-text">
+          <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+          </svg>
+          <span>Direct Text</span>
+        </button>
+
+        <button type="button" class="tab-btn" id="tab-document" data-mode="document" role="tab" aria-selected="false" aria-controls="pane-document">
+          <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Document (PDF / DOCX / TXT)</span>
+        </button>
+
+        <button type="button" class="tab-btn" id="tab-url" data-mode="url" role="tab" aria-selected="false" aria-controls="pane-url">
+          <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span>Website Link (URL)</span>
+        </button>
+      </div>
+
+      <form id="news-form" class="prediction-form" novalidate>
+
+        <!-- ==================== PANE 1: DIRECT TEXT INPUT ==================== -->
+        <div id="pane-text" class="tab-pane active" role="tabpanel" aria-labelledby="tab-text">
+          <div class="pane-toolbar">
+            <span class="samples-label">Quick Samples:</span>
+            <div class="samples-group">
+              <button type="button" class="btn-sample" id="btn-sample-real">Real News</button>
+              <button type="button" class="btn-sample" id="btn-sample-fake">Fake News</button>
+              <button type="button" class="btn-sample" id="btn-sample-political">Political News</button>
+            </div>
+          </div>
+
+          <!-- Headline Input -->
+          <div class="form-group">
+            <label for="news-title" class="field-label">NEWS HEADLINE</label>
+            <input 
+              type="text" 
+              id="news-title" 
+              name="title" 
+              class="input-text" 
+              placeholder="Enter the news headline"
+              autocomplete="off"
+            />
+          </div>
+
+          <!-- Article Textarea -->
+          <div class="form-group">
+            <div class="field-label-split">
+              <label for="news-text" class="field-label">NEWS ARTICLE</label>
+              <span id="char-word-counter" class="text-counter font-mono">0 words | 0 characters</span>
+            </div>
+            <textarea 
+              id="news-text" 
+              name="text" 
+              class="input-textarea" 
+              rows="7" 
+              placeholder="Paste the complete news article here"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- ==================== PANE 2: DOCUMENT UPLOAD (PDF / DOCX / TXT) ==================== -->
+        <div id="pane-document" class="tab-pane" role="tabpanel" aria-labelledby="tab-document" style="display: none;">
+          <!-- Dropzone -->
+          <div id="doc-dropzone" class="doc-dropzone" tabindex="0" role="button" aria-label="Upload document dropzone">
+            <input type="file" id="doc-file-input" class="file-hidden-input" accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" />
+            <div class="dropzone-content">
+              <div class="dropzone-icon-circle">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <h4 class="dropzone-title">Upload News Document</h4>
+              <p class="dropzone-sub">Drag &amp; drop your file here, or <span class="dropzone-browse">browse from computer</span></p>
+              <div class="dropzone-formats">
+                <span class="format-pill">PDF (.pdf)</span>
+                <span class="format-pill">Word (.docx)</span>
+                <span class="format-pill">Text (.txt)</span>
+                <span class="format-max">Max: 16 MB</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Document Extraction Status / Preview Box -->
+          <div id="doc-preview-box" class="doc-preview-box" style="display: none;">
+            <div class="doc-file-card">
+              <div class="doc-file-meta">
+                <div class="doc-file-icon" id="doc-file-icon">📄</div>
+                <div>
+                  <h5 id="doc-filename" class="doc-filename">document.pdf</h5>
+                  <div class="doc-tags">
+                    <span id="doc-badge-type" class="badge-file-type">PDF</span>
+                    <span id="doc-filesize" class="doc-filesize">-- KB</span>
+                    <span id="doc-stats" class="doc-stats">-- words</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn-remove-doc" id="btn-remove-doc" title="Remove document and upload another">
+                &times; Change File
+              </button>
+            </div>
+
+            <!-- Extracted Title & Content (Editable for verification) -->
+            <div class="extracted-fields-group">
+              <div class="form-group">
+                <label for="doc-extracted-title" class="field-label">EXTRACTED HEADLINE</label>
+                <input type="text" id="doc-extracted-title" class="input-text" placeholder="Headline extracted from document..." />
+              </div>
+              <div class="form-group">
+                <div class="field-label-split">
+                  <label for="doc-extracted-text" class="field-label">EXTRACTED ARTICLE CONTENT</label>
+                  <span id="doc-char-word-counter" class="text-counter font-mono">0 words | 0 characters</span>
+                </div>
+                <textarea id="doc-extracted-text" class="input-textarea" rows="6" placeholder="Article text extracted from document..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== PANE 3: WEBSITE LINK (URL) ==================== -->
+        <div id="pane-url" class="tab-pane" role="tabpanel" aria-labelledby="tab-url" style="display: none;">
+          <div class="url-input-block">
+            <label for="news-url" class="field-label">NEWS ARTICLE WEBSITE LINK (URL)</label>
+            <div class="url-input-group">
+              <div class="url-icon-addon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
+              <input 
+                type="url" 
+                id="news-url" 
+                class="input-text input-url" 
+                placeholder="https://www.reuters.com/world/article-headline" 
+                autocomplete="off"
+              />
+              <button type="button" class="btn btn-primary btn-fetch" id="btn-fetch-url">
+                <span class="btn-spinner" id="fetch-spinner" style="display: none;"></span>
+                <span id="fetch-btn-text">Fetch Article</span>
+              </button>
+            </div>
+            <p class="field-help">Paste any online news article link. The system extracts the headline and body text automatically.</p>
+          </div>
+
+          <!-- URL Presets Toolbar -->
+          <div class="pane-toolbar">
+            <span class="samples-label">Demo Web Links:</span>
+            <div class="samples-group">
+              <button type="button" class="btn-sample" id="btn-url-toi">Times of India (Defence)</button>
+              <button type="button" class="btn-sample" id="btn-url-reuters">Reuters (Wikipedia)</button>
+              <button type="button" class="btn-sample" id="btn-url-ap">AP News (Wikipedia)</button>
+            </div>
+          </div>
+
+          <!-- URL Extraction Preview Box -->
+          <div id="url-preview-box" class="url-preview-box" style="display: none;">
+            <div class="url-meta-header">
+              <div class="url-domain-tag">
+                <span class="domain-icon">🌐</span>
+                <span id="url-extracted-domain" class="font-mono">domain.com</span>
+              </div>
+              <span id="url-stats" class="text-counter font-mono">0 words extracted</span>
+            </div>
+
+            <div class="extracted-fields-group">
+              <div class="form-group">
+                <label for="url-extracted-title" class="field-label">EXTRACTED HEADLINE</label>
+                <input type="text" id="url-extracted-title" class="input-text" placeholder="Article headline fetched from webpage..." />
+              </div>
+              <div class="form-group">
+                <div class="field-label-split">
+                  <label for="url-extracted-text" class="field-label">EXTRACTED ARTICLE CONTENT</label>
+                  <span id="url-char-word-counter" class="text-counter font-mono">0 words | 0 characters</span>
+                </div>
+                <textarea id="url-extracted-text" class="input-textarea" rows="6" placeholder="Article content fetched from webpage..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== COMMON: MODEL SELECTOR AREA ==================== -->
+        <div class="model-selection-box">
+          <div class="selector-row">
+            <label for="model-selector" class="selector-label">SELECT MACHINE LEARNING MODEL</label>
+            <div class="select-wrapper">
+              <select id="model-selector" name="model" class="custom-select">
+                <option value="logistic_regression" selected>Logistic Regression</option>
+                <option value="svm">SVM</option>
+                <option value="random_forest">Random Forest</option>
+              </select>
+            </div>
+          </div>
+          <p id="model-description" class="model-description">
+            Linear classification model for text classification.
+          </p>
+        </div>
+
+        <!-- ==================== COMMON: ACTION BUTTONS ==================== -->
+        <div class="form-actions-bar">
+          <div class="buttons-cluster">
+            <button type="submit" class="btn btn-primary" id="btn-analyze">
+              <span class="btn-spinner" id="analyze-spinner" style="display: none;"></span>
+              <span id="analyze-btn-text">Analyze News</span>
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-clear">
+              Clear
+            </button>
+          </div>
+          <span class="keyboard-hint font-mono">Shortcut: <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+        </div>
+
+        <!-- Validation Error Message -->
+        <div id="form-error" class="alert-box alert-error" style="display: none;" role="alert">
+          <span class="alert-icon">&#9888;</span>
+          <span id="form-error-text">Please enter a news headline or article text before analyzing.</span>
+        </div>
+      </form>
+    </section>
+
+    <!-- 4. PREDICTION RESULT CARD (Hidden initially) -->
+    <section id="result-section" class="result-section" style="display: none;">
+      <div id="result-card" class="card result-card">
+        <div class="result-header">
+          <div class="result-badge-wrap">
+            <span class="result-kicker">PREDICTION</span>
+            <h3 id="result-verdict" class="result-title">--</h3>
+          </div>
+          <div class="result-meta-right">
+            <span id="result-source-badge" class="result-source-badge">Source: Text Input</span>
+            <div class="result-model-used">
+              <span class="meta-label">Model Used:</span>
+              <span id="result-model-name" class="meta-value">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-metrics-grid">
+          <div class="metric-cell">
+            <span class="metric-label">Model Selected</span>
+            <span id="result-model-badge" class="metric-value">--</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-label">Processed Word Tokens</span>
+            <span id="result-tokens" class="metric-value font-mono">--</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-label">Raw Classifier Class</span>
+            <span id="result-raw-class" class="metric-value font-mono">--</span>
+          </div>
+          <div class="metric-cell">
+            <span class="metric-label">Feature Pipeline</span>
+            <span class="metric-value">WordNet + TF-IDF (1, 2)</span>
+          </div>
+        </div>
+
+        <div class="result-explanation">
+          <p id="result-explanation-text" class="explanation-paragraph"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. MODEL PERFORMANCE & COMPARISON CHART -->
+    <section class="card section-performance">
+      <div class="section-title-wrap">
+        <h3 class="card-heading">Model Performance</h3>
+        <p class="card-caption">
+          Empirical evaluation results loaded directly from <code>model_comparison_results.csv</code> (Google Colab run).
+        </p>
+      </div>
+
+      <div id="metrics-error" class="alert-box alert-warning" style="display: none;">
+        Model comparison results unavailable.
+      </div>
+
+      <div id="metrics-container" class="performance-grid">
+        <!-- Comparison Table -->
+        <div class="table-pane">
+          <h4 class="subheading">Performance Table</h4>
+          <div class="table-responsive">
+            <table class="performance-table" id="metrics-table">
+              <thead>
+                <tr>
+                  <th scope="col">Model</th>
+                  <th scope="col">Accuracy</th>
+                  <th scope="col">Precision</th>
+                  <th scope="col">Recall</th>
+                  <th scope="col">F1-Score</th>
+                </tr>
+              </thead>
+              <tbody id="metrics-table-body">
+                <tr>
+                  <td colspan="5" class="cell-loading">Loading actual comparison metrics from CSV...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="table-note">* Actual values computed on the ISOT test split without synthetic modification.</p>
+        </div>
+
+        <!-- Comparison Chart -->
+        <div class="chart-pane">
+          <h4 class="subheading">Model Performance Comparison</h4>
+          <div class="chart-canvas-container">
+            <canvas id="performanceChart" aria-label="Model Performance Comparison Bar Chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. NLP PIPELINE VISUALIZATION -->
+    <section class="card section-pipeline">
+      <div class="section-title-wrap">
+        <h3 class="card-heading">NLP Processing Pipeline</h3>
+        <p class="card-caption">Sequential transformations executed on news text (from text, documents, or URLs) prior to classification.</p>
+      </div>
+
+      <div class="pipeline-flow">
+        <div class="pipeline-step">
+          <span class="step-num">1</span>
+          <span class="step-text">Input (Text / PDF / DOCX / URL)</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+          <span class="step-num">2</span>
+          <span class="step-text">Text Cleaning</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+          <span class="step-num">3</span>
+          <span class="step-text">Tokenization</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+          <span class="step-num">4</span>
+          <span class="step-text">Stopword Removal</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+          <span class="step-num">5</span>
+          <span class="step-text">Lemmatization</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+          <span class="step-num">6</span>
+          <span class="step-text">TF-IDF + N-grams</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+          <span class="step-num">7</span>
+          <span class="step-text">ML Model</span>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step step-final">
+          <span class="step-num">8</span>
+          <span class="step-text">Prediction</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. TECHNOLOGY / MODEL CARDS -->
+    <section class="section-technologies">
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tech-icon-wrap">
+            <svg class="tech-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
+          </div>
+          <h4 class="tech-title">NLP</h4>
+          <p class="tech-desc">Regex cleaning, stopword filtering, and NLTK WordNet lemmatization.</p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-wrap">
+            <svg class="tech-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+          </div>
+          <h4 class="tech-title">TF-IDF + N-grams</h4>
+          <p class="tech-desc">5,000 max features capturing unigram and bigram frequency-inverse weights.</p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-wrap">
+            <svg class="tech-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"></path>
+              <path d="m19 9-5 5-4-4-3 3"></path>
+            </svg>
+          </div>
+          <h4 class="tech-title">Logistic Regression</h4>
+          <p class="tech-desc">Linear classification model estimating probability thresholds for text features.</p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-wrap">
+            <svg class="tech-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>
+          </div>
+          <h4 class="tech-title">SVM</h4>
+          <p class="tech-desc">Linear Support Vector Machine maximizing separation margins in sparse vector space.</p>
+        </div>
+
+        <div class="tech-card">
+          <div class="tech-icon-wrap">
+            <svg class="tech-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20"></path>
+              <path d="m17 5-5-3-5 3"></path>
+              <path d="m17 19-5 3-5-3"></path>
+            </svg>
+          </div>
+          <h4 class="tech-title">Random Forest</h4>
+          <p class="tech-desc">Ensemble classification model aggregating votes across randomized decision trees.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 8. FOOTER -->
+  <footer class="app-footer">
+    <div class="content-container footer-inner">
+      <div class="footer-left">
+        <strong>Fake News Detection System</strong> &bull; Machine Learning Project
+      </div>
+      <div class="footer-right">
+        Technologies: Python | Flask | NLP | Scikit-learn
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
